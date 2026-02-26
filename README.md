@@ -2,7 +2,7 @@
 
 A standalone desktop password manager. No browser needed. No internet. No accounts.
 All data is encrypted with AES-256-GCM and stored only on your machine.
-
+VaultKey
 ---
 
 ## 📋 Requirements
