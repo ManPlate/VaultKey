@@ -2,7 +2,8 @@
 
 A standalone desktop password manager. No browser needed. No internet. No accounts.
 All data is encrypted with AES-256-GCM and stored only on your machine.
-[VaultKey](https://github.com/ManPlate/VaultKey/blob/49221719933d8e75e7b63a3988152dd75d2f14ce/dist/VaultKey.exe)
+
+Download VaultKey [here](https://github.com/ManPlate/VaultKey/blob/49221719933d8e75e7b63a3988152dd75d2f14ce/dist/VaultKey.exe)
 ---
 
 ## 📋 Requirements
