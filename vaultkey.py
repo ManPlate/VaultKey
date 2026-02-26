@@ -9,8 +9,9 @@ from tkinter import messagebox
 import json, os, base64, secrets
 
 # ── Version ────────────────────────────────────────────────────────────────
-VERSION = "1.2.0"
+VERSION = "1.3.0"
 CHANGELOG = [
+    ("1.3.0", "Added ability to change master password"),
     ("1.2.0", "Fixed card layout and resize behaviour"),
     ("1.1.0", "Fixed compatibility with Python 3.14 on Windows"),
     ("1.0.0", "Initial release"),
@@ -353,6 +354,7 @@ class VaultApp(tk.Frame):
         self.count_lbl = tk.Label(right, text="", font=FNT_SM, fg=MUTED, bg=SURFACE)
         self.count_lbl.pack(side="left", padx=(0,14))
         mk_btn(right, "+ Add Entry", self._add_entry, w=13).pack(side="left", padx=(0,8))
+        mk_btn(right, "🔑 Password", self._change_password, bg=SURFACE2, fg=MUTED, w=12).pack(side="left", padx=(0,8))
         mk_btn(right, "ℹ About", self._show_about, bg=SURFACE2, fg=MUTED, w=9).pack(side="left", padx=(0,8))
         mk_btn(right, "🔒 Lock", self.on_lock, bg=SURFACE2, fg=MUTED, w=10).pack(side="left")
 
@@ -510,6 +512,117 @@ class VaultApp(tk.Frame):
             except: pass
         self.after(500, lambda: [w.config(bg=orig)
                                  for w in widgets if w.winfo_exists()])
+
+    def _change_password(self):
+        win = tk.Toplevel(self.winfo_toplevel())
+        win.title("Change Master Password")
+        win.configure(bg=SURFACE)
+        win.resizable(False, False)
+        win.grab_set()
+        w, h = 420, 460
+        sw, sh = win.winfo_screenwidth(), win.winfo_screenheight()
+        win.geometry(f"{w}x{h}+{(sw-w)//2}+{(sh-h)//2}")
+
+        pad = tk.Frame(win, bg=SURFACE, padx=30, pady=28)
+        pad.pack(fill="both", expand=True)
+
+        tk.Label(pad, text="🔑  Change Master Password", font=FNT_HEAD,
+                 fg=TEXT, bg=SURFACE).pack(anchor="w", pady=(0, 20))
+
+        # Current password
+        tk.Label(pad, text="CURRENT PASSWORD", font=FNT_SM,
+                 fg=MUTED, bg=SURFACE).pack(anchor="w")
+        v_current = tk.StringVar()
+        mk_entry(pad, v_current, show="●", mono=True, w=36).pack(
+            fill="x", ipady=10, pady=(4, 14))
+
+        # New password
+        tk.Label(pad, text="NEW PASSWORD", font=FNT_SM,
+                 fg=MUTED, bg=SURFACE).pack(anchor="w")
+        v_new = tk.StringVar()
+        mk_entry(pad, v_new, show="●", mono=True, w=36).pack(
+            fill="x", ipady=10, pady=(4, 14))
+
+        # Confirm new password
+        tk.Label(pad, text="CONFIRM NEW PASSWORD", font=FNT_SM,
+                 fg=MUTED, bg=SURFACE).pack(anchor="w")
+        v_confirm = tk.StringVar()
+        mk_entry(pad, v_confirm, show="●", mono=True, w=36).pack(
+            fill="x", ipady=10, pady=(4, 0))
+
+        # Error label
+        err_lbl = tk.Label(pad, text="", font=FNT_SM, fg=RED, bg=SURFACE)
+        err_lbl.pack(pady=(8, 0))
+
+        # Success label
+        ok_lbl = tk.Label(pad, text="", font=FNT_SM, fg=GREEN, bg=SURFACE)
+        ok_lbl.pack()
+
+        def do_change():
+            current  = v_current.get()
+            new_pw   = v_new.get()
+            confirm  = v_confirm.get()
+            err_lbl.config(text="")
+            ok_lbl.config(text="")
+
+            # Verify current password
+            meta = load_meta()
+            salt = base64.b64decode(meta["salt"])
+            try:
+                test_key = derive_key(current, salt)
+                verify   = base64.b64decode(meta["verify"])
+                if decrypt_data(test_key, verify) != "VAULTKEY_OK":
+                    raise ValueError
+            except Exception:
+                err_lbl.config(text="Current password is incorrect.")
+                return
+
+            if not new_pw:
+                err_lbl.config(text="New password cannot be empty.")
+                return
+            if len(new_pw) < 6:
+                err_lbl.config(text="New password must be at least 6 characters.")
+                return
+            if new_pw != confirm:
+                err_lbl.config(text="New passwords do not match.")
+                return
+            if new_pw == current:
+                err_lbl.config(text="New password must be different from current.")
+                return
+
+            # Re-encrypt vault with new key
+            new_salt = secrets.token_bytes(16)
+            new_key  = derive_key(new_pw, new_salt)
+
+            # Save new meta
+            new_verify = encrypt_data(new_key, "VAULTKEY_OK")
+            save_meta(base64.b64encode(new_salt).decode(),
+                      base64.b64encode(new_verify).decode())
+
+            # Re-encrypt vault data
+            raw = encrypt_data(new_key, json.dumps(self.vault))
+            with open(VAULT_FILE, "wb") as f:
+                f.write(raw)
+
+            # Update the live key in memory
+            self.key = new_key
+
+            ok_lbl.config(text="✅  Master password changed successfully!")
+            err_lbl.config(text="")
+
+            # Clear fields
+            v_current.set("")
+            v_new.set("")
+            v_confirm.set("")
+
+            # Auto close after 2 seconds
+            win.after(2000, win.destroy)
+
+        tk.Frame(pad, bg=SURFACE, height=4).pack()
+        btn_row = tk.Frame(pad, bg=SURFACE)
+        btn_row.pack(fill="x", pady=(8, 0))
+        mk_btn(btn_row, "Cancel", win.destroy, bg=SURFACE2, fg=MUTED, w=12).pack(side="left")
+        mk_btn(btn_row, "Change Password", do_change, w=18).pack(side="right")
 
     def _show_about(self):
         win = tk.Toplevel(self.winfo_toplevel())

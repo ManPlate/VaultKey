@@ -78,6 +78,7 @@ The standalone file will appear in the `dist/` folder.
 
 | Version | Notes |
 |---|---|
+| **v1.3.0** | Added ability to change master password |
 | **v1.2.0** | Fixed card layout and resize behaviour |
 | **v1.1.0** | Fixed compatibility with Python 3.14 on Windows |
 | **v1.0.0** | Initial release |
