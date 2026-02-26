@@ -4,6 +4,7 @@ A standalone desktop password manager. No browser needed. No internet. No accoun
 All data is encrypted with AES-256-GCM and stored only on your machine.
 
 Download VaultKey [here](https://github.com/ManPlate/VaultKey/raw/49221719933d8e75e7b63a3988152dd75d2f14ce/dist/VaultKey.exe)
+
 ---
 
 ## 🔒 First Launch
@@ -20,19 +21,6 @@ All encrypted vault data is stored in:
 - **Mac/Linux:** `~/.vaultkey/`
 
 The files are encrypted — they cannot be read without your master password.
-
----
-
-## 📦 Package as a Standalone App (Optional)
-
-To create a double-clickable `.exe` (Windows) or `.app` (Mac):
-
-```
-pip install pyinstaller
-pyinstaller --onefile --windowed --name VaultKey vaultkey.py
-```
-
-The standalone file will appear in the `dist/` folder.
 
 ---
 
