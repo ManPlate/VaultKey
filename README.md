@@ -6,36 +6,6 @@ All data is encrypted with AES-256-GCM and stored only on your machine.
 Download VaultKey [here](https://github.com/ManPlate/VaultKey/raw/49221719933d8e75e7b63a3988152dd75d2f14ce/dist/VaultKey.exe)
 ---
 
-## 📋 Requirements
-
-- Python 3.8 or higher (free download: https://www.python.org/downloads/)
-- Windows, macOS, or Linux
-
----
-
-## 🚀 Quick Start (3 steps)
-
-**Step 1 — Install Python** (if you don't have it)
-Download from https://www.python.org/downloads/ and install.
-➡ On Windows: check "Add Python to PATH" during install.
-
-**Step 2 — Install dependencies**
-Open Terminal (Mac/Linux) or Command Prompt (Windows), navigate to this folder, and run:
-
-```
-pip install -r requirements.txt
-```
-
-**Step 3 — Launch the app**
-```
-python vaultkey.py
-```
-
-Or on Windows, double-click `run_windows.bat`
-Or on Mac/Linux, double-click `run_mac_linux.sh` (may need to chmod +x it first)
-
----
-
 ## 🔒 First Launch
 
 On first run, you'll be asked to create a **Master Password**.
