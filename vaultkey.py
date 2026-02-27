@@ -9,8 +9,9 @@ from tkinter import messagebox
 import json, os, base64, secrets, string
 
 # ── Version ────────────────────────────────────────────────────────────────
-VERSION = "1.4.0"
+VERSION = "1.5.0"
 CHANGELOG = [
+    ("1.5.0", "Security hardening: lockout, auto-lock, clipboard clear"),
     ("1.4.0", "Added password generator with strength meter"),
     ("1.3.0", "Added ability to change master password"),
     ("1.2.0", "Fixed card layout and resize behaviour"),
@@ -54,12 +55,12 @@ def decrypt_data(key, ciphertext):
 
 def load_meta():
     if os.path.exists(META_FILE):
-        with open(META_FILE) as f:
+        with open(META_FILE, encoding="utf-8") as f:
             return json.load(f)
     return None
 
 def save_meta(salt_b64, verify_b64):
-    with open(META_FILE, "w") as f:
+    with open(META_FILE, "w", encoding="utf-8") as f:
         json.dump({"salt": salt_b64, "verify": verify_b64}, f)
 
 def vault_exists():
@@ -145,22 +146,28 @@ class LockScreen(tk.Frame):
             self._build_login(card)
 
     def _build_login(self, card):
+        self._attempts   = 0
+        self._locked_out = False
+
         tk.Label(card, text="MASTER PASSWORD", font=FNT_SM,
                  fg=MUTED, bg=SURFACE).pack(anchor="w")
         self.pw_var = tk.StringVar()
-        e = mk_entry(card, self.pw_var, show="●", mono=True, w=32)
-        e.pack(fill="x", ipady=10, pady=(4,0))
-        e.bind("<Return>", lambda _: self._do_login())
-        e.focus_set()
+        self._pw_entry = mk_entry(card, self.pw_var, show="●", mono=True, w=32)
+        self._pw_entry.pack(fill="x", ipady=10, pady=(4,0))
+        self._pw_entry.bind("<Return>", lambda _: self._do_login())
+        self._pw_entry.focus_set()
 
         self.err_lbl = tk.Label(card, text="", font=FNT_SM, fg=RED, bg=SURFACE)
         self.err_lbl.pack(pady=(8,0))
 
         tk.Frame(card, bg=SURFACE, height=12).pack()
-        mk_btn(card, "Unlock Vault", self._do_login, w=24).pack(fill="x")
+        self._unlock_btn = mk_btn(card, "Unlock Vault", self._do_login, w=24)
+        self._unlock_btn.pack(fill="x")
 
     def _do_login(self):
-        pw   = self.pw_var.get()
+        if self._locked_out:
+            return
+        pw = self.pw_var.get()
         meta = load_meta()
         if not meta:
             self.err_lbl.config(text="No vault found."); return
@@ -170,10 +177,35 @@ class LockScreen(tk.Frame):
             verify = base64.b64decode(meta["verify"])
             if decrypt_data(key, verify) != "VAULTKEY_OK":
                 raise ValueError
+            self._attempts = 0
             self.on_unlock(key)
         except Exception:
-            self.err_lbl.config(text="Incorrect password. Try again.")
+            self._attempts += 1
+            remaining = 5 - self._attempts
+            if self._attempts >= 5:
+                self._locked_out = True
+                self._unlock_btn.config(state="disabled")
+                self._pw_entry.config(state="disabled")
+                self._countdown(30)
+            else:
+                self.err_lbl.config(
+                    text=f"Incorrect password. {remaining} attempt{'s' if remaining != 1 else ''} remaining.",
+                    fg=RED)
             self.pw_var.set("")
+
+    def _countdown(self, secs):
+        if secs > 0:
+            self.err_lbl.config(
+                text=f"Too many attempts. Wait {secs}s before trying again.",
+                fg="#ffb347")
+            self.after(1000, lambda: self._countdown(secs - 1))
+        else:
+            self._locked_out = False
+            self._attempts   = 0
+            self._unlock_btn.config(state="normal")
+            self._pw_entry.config(state="normal")
+            self.err_lbl.config(text="You may try again.", fg=GREEN)
+            self._pw_entry.focus_set()
 
     def _build_setup(self, card):
         tk.Label(card, text="Welcome! Create your master password.",
@@ -546,6 +578,14 @@ class VaultApp(tk.Frame):
         self.pack(fill="both", expand=True)
         self._build_ui()
         self._render()
+        self._auto_lock_job   = None
+        self._clipboard_job   = None
+        self._AUTO_LOCK_SECS  = 300   # 5 minutes
+        self._CLIPBOARD_SECS  = 30    # 30 seconds
+        self._reset_auto_lock()
+        # Bind mouse/keyboard activity to reset the auto-lock timer
+        self.winfo_toplevel().bind_all("<Motion>",   lambda e: self._reset_auto_lock())
+        self.winfo_toplevel().bind_all("<KeyPress>",  lambda e: self._reset_auto_lock())
 
     def _load_vault(self):
         if not os.path.exists(VAULT_FILE):
@@ -574,6 +614,9 @@ class VaultApp(tk.Frame):
         right.pack(side="right", padx=20)
         self.count_lbl = tk.Label(right, text="", font=FNT_SM, fg=MUTED, bg=SURFACE)
         self.count_lbl.pack(side="left", padx=(0,10))
+        self.lock_timer_lbl = tk.Label(right, text="", font=FNT_SM, fg=MUTED, bg=SURFACE)
+        self.lock_timer_lbl.pack(side="left", padx=(0,10))
+        self._update_lock_timer_display()
         mk_btn(right, "+ Add", self._add_entry, w=7).pack(side="left", padx=(0,6))
         mk_btn(right, "⚙️ Gen", self._open_generator, bg=SURFACE2, fg=MUTED, w=7).pack(side="left", padx=(0,6))
         mk_btn(right, "🔑 Passwd", self._change_password, bg=SURFACE2, fg=MUTED, w=9).pack(side="left", padx=(0,6))
@@ -727,6 +770,8 @@ class VaultApp(tk.Frame):
         else:
             self.winfo_toplevel().clipboard_clear()
             self.winfo_toplevel().clipboard_append(value)
+        # Auto-clear clipboard after 30 seconds
+        self._schedule_clipboard_clear()
         orig = SURFACE2
         widgets = [row] + list(row.winfo_children())
         for w in widgets:
@@ -734,6 +779,48 @@ class VaultApp(tk.Frame):
             except: pass
         self.after(500, lambda: [w.config(bg=orig)
                                  for w in widgets if w.winfo_exists()])
+
+    def _reset_auto_lock(self):
+        if self._auto_lock_job:
+            self.after_cancel(self._auto_lock_job)
+        self._auto_lock_job = self.after(
+            self._AUTO_LOCK_SECS * 1000,
+            self._auto_lock_trigger)
+        self._lock_start = self.winfo_toplevel().tk.call("clock", "seconds")
+        self._update_lock_timer_display()
+
+    def _update_lock_timer_display(self):
+        try:
+            now     = int(self.winfo_toplevel().tk.call("clock", "seconds"))
+            elapsed = now - int(self._lock_start) if hasattr(self, "_lock_start") else 0
+            remain  = max(0, self._AUTO_LOCK_SECS - elapsed)
+            mins, secs = divmod(remain, 60)
+            self.lock_timer_lbl.config(text=f"🔒 {mins}:{secs:02d}")
+            self.after(1000, self._update_lock_timer_display)
+        except Exception:
+            pass
+
+    def _auto_lock_trigger(self):
+        # Clear decrypted vault from memory before locking
+        self.vault = []
+        self.key   = None
+        self.on_lock()
+
+    def _schedule_clipboard_clear(self):
+        if self._clipboard_job:
+            self.after_cancel(self._clipboard_job)
+        self._clipboard_job = self.after(
+            self._CLIPBOARD_SECS * 1000,
+            self._clear_clipboard)
+
+    def _clear_clipboard(self):
+        try:
+            if CLIPBOARD_OK:
+                pyperclip.copy("")
+            else:
+                self.winfo_toplevel().clipboard_clear()
+        except Exception:
+            pass
 
     def _open_generator(self):
         GeneratorDialog(self.winfo_toplevel())
