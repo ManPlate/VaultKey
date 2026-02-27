@@ -6,11 +6,12 @@ Requires: pip install cryptography pyperclip
 
 import tkinter as tk
 from tkinter import messagebox
-import json, os, base64, secrets, string
+import json, os, base64, secrets, string, threading, urllib.request, webbrowser
 
 # ── Version ────────────────────────────────────────────────────────────────
-VERSION = "1.5.0"
+VERSION = "1.6.0"
 CHANGELOG = [
+    ("1.6.0", "Added automatic update checker"),
     ("1.5.0", "Security hardening: lockout, auto-lock, clipboard clear"),
     ("1.4.0", "Added password generator with strength meter"),
     ("1.3.0", "Added ability to change master password"),
@@ -18,6 +19,32 @@ CHANGELOG = [
     ("1.1.0", "Fixed compatibility with Python 3.14 on Windows"),
     ("1.0.0", "Initial release"),
 ]
+
+# ── Update Checker ────────────────────────────────────────────────────────
+GITHUB_USER    = "ManPlate"
+GITHUB_REPO    = "VaultKey"
+VERSION_URL    = f"https://raw.githubusercontent.com/{GITHUB_USER}/{GITHUB_REPO}/main/version.json"
+RELEASES_URL   = f"https://github.com/{GITHUB_USER}/{GITHUB_REPO}/releases"
+
+def check_for_update(callback):
+    """Runs in a background thread. Calls callback(new_version) if update found."""
+    def _check():
+        try:
+            req = urllib.request.Request(
+                VERSION_URL,
+                headers={"User-Agent": f"VaultKey/{VERSION}"}
+            )
+            with urllib.request.urlopen(req, timeout=5) as r:
+                data    = json.loads(r.read().decode())
+                latest  = data.get("version", "")
+                if latest and latest != VERSION:
+                    # Compare version tuples e.g. 1.6.0 vs 1.5.0
+                    def parse(v): return tuple(int(x) for x in v.split("."))
+                    if parse(latest) > parse(VERSION):
+                        callback(latest)
+        except Exception:
+            pass   # Silently fail — app works fully offline
+    threading.Thread(target=_check, daemon=True).start()
 
 try:
     import pyperclip
@@ -586,6 +613,8 @@ class VaultApp(tk.Frame):
         # Bind mouse/keyboard activity to reset the auto-lock timer
         self.winfo_toplevel().bind_all("<Motion>",   lambda e: self._reset_auto_lock())
         self.winfo_toplevel().bind_all("<KeyPress>",  lambda e: self._reset_auto_lock())
+        # Check for updates in background
+        check_for_update(self._on_update_found)
 
     def _load_vault(self):
         if not os.path.exists(VAULT_FILE):
@@ -622,6 +651,27 @@ class VaultApp(tk.Frame):
         mk_btn(right, "🔑 Passwd", self._change_password, bg=SURFACE2, fg=MUTED, w=9).pack(side="left", padx=(0,6))
         mk_btn(right, "ℹ About", self._show_about, bg=SURFACE2, fg=MUTED, w=8).pack(side="left", padx=(0,6))
         mk_btn(right, "🔒 Lock", self.on_lock, bg=SURFACE2, fg=MUTED, w=8).pack(side="left")
+
+        # Update banner (hidden until update found)
+        self._update_banner = tk.Frame(self, bg="#1a2a10",
+                                       highlightbackground="#4ecca3",
+                                       highlightthickness=1)
+        self._update_lbl = tk.Label(self._update_banner,
+                                    text="", font=FNT_SM,
+                                    fg="#4ecca3", bg="#1a2a10")
+        self._update_lbl.pack(side="left", padx=16, pady=8)
+        self._update_btn = tk.Button(self._update_banner,
+                                     text="Download",
+                                     font=("Segoe UI", 9, "bold"),
+                                     bg="#4ecca3", fg="#0a0a0a",
+                                     relief="flat", cursor="hand2",
+                                     padx=10, pady=4,
+                                     command=lambda: webbrowser.open(RELEASES_URL))
+        self._update_btn.pack(side="right", padx=16, pady=6)
+        tk.Button(self._update_banner, text="✕",
+                  font=FNT_SM, bg="#1a2a10", fg="#4ecca3",
+                  relief="flat", cursor="hand2", bd=0,
+                  command=self._dismiss_update_banner).pack(side="right", padx=(0,4))
 
         # Search
         sf = tk.Frame(self, bg=BG, padx=20, pady=12)
@@ -779,6 +829,18 @@ class VaultApp(tk.Frame):
             except: pass
         self.after(500, lambda: [w.config(bg=orig)
                                  for w in widgets if w.winfo_exists()])
+
+    def _on_update_found(self, new_version):
+        """Called from background thread — use after() to safely update UI."""
+        self.after(0, lambda: self._show_update_banner(new_version))
+
+    def _show_update_banner(self, new_version):
+        self._update_lbl.config(
+            text=f"🎉  VaultKey v{new_version} is available!  You are on v{VERSION}.")
+        self._update_banner.pack(fill="x", after=self.winfo_children()[0])
+
+    def _dismiss_update_banner(self):
+        self._update_banner.pack_forget()
 
     def _reset_auto_lock(self):
         if self._auto_lock_job:
