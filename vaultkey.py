@@ -6,11 +6,12 @@ Requires: pip install cryptography pyperclip
 
 import tkinter as tk
 from tkinter import messagebox
-import json, os, base64, secrets
+import json, os, base64, secrets, string
 
 # ── Version ────────────────────────────────────────────────────────────────
-VERSION = "1.3.0"
+VERSION = "1.4.0"
 CHANGELOG = [
+    ("1.4.0", "Added password generator with strength meter"),
     ("1.3.0", "Added ability to change master password"),
     ("1.2.0", "Fixed card layout and resize behaviour"),
     ("1.1.0", "Fixed compatibility with Python 3.14 on Windows"),
@@ -218,6 +219,192 @@ class LockScreen(tk.Frame):
         self.on_unlock(key)
 
 
+# ── Password Generator Helper ─────────────────────────────────────────────
+def generate_password(length=16, upper=True, lower=True,
+                      digits=True, symbols=True):
+    pool = ""
+    required = []
+    if upper:
+        pool += string.ascii_uppercase
+        required.append(secrets.choice(string.ascii_uppercase))
+    if lower:
+        pool += string.ascii_lowercase
+        required.append(secrets.choice(string.ascii_lowercase))
+    if digits:
+        pool += string.digits
+        required.append(secrets.choice(string.digits))
+    if symbols:
+        sym = "!@#$%^&*()_+-=[]{}|;:,.<>?"
+        pool += sym
+        required.append(secrets.choice(sym))
+    if not pool:
+        pool = string.ascii_letters + string.digits
+    remaining = [secrets.choice(pool) for _ in range(length - len(required))]
+    pw_list = required + remaining
+    secrets.SystemRandom().shuffle(pw_list)
+    return "".join(pw_list)
+
+def password_strength(pw):
+    score = 0
+    if len(pw) >= 8:  score += 1
+    if len(pw) >= 12: score += 1
+    if len(pw) >= 16: score += 1
+    if any(c.isupper() for c in pw):   score += 1
+    if any(c.islower() for c in pw):   score += 1
+    if any(c.isdigit() for c in pw):   score += 1
+    if any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?" for c in pw): score += 1
+    if score <= 2:   return "Weak",   "#fc5c7d", score / 7
+    if score <= 4:   return "Fair",   "#ffb347", score / 7
+    if score <= 5:   return "Good",   "#61dafb", score / 7
+    return             "Strong", "#4ecca3", score / 7
+
+
+class GeneratorDialog(tk.Toplevel):
+    """Standalone password generator — callable from header or entry dialog."""
+    def __init__(self, master, on_use=None):
+        super().__init__(master)
+        self.on_use = on_use   # callback(password) when Use button clicked
+        self.title("Password Generator")
+        self.configure(bg=SURFACE)
+        self.resizable(False, False)
+        self.grab_set()
+        w, h = 440, 480
+        sw, sh = self.winfo_screenwidth(), self.winfo_screenheight()
+        self.geometry(f"{w}x{h}+{(sw-w)//2}+{(sh-h)//2}")
+        self._build()
+        self._generate()
+
+    def _build(self):
+        pad = tk.Frame(self, bg=SURFACE, padx=30, pady=24)
+        pad.pack(fill="both", expand=True)
+
+        tk.Label(pad, text="⚙️  Password Generator", font=FNT_HEAD,
+                 fg=TEXT, bg=SURFACE).pack(anchor="w", pady=(0, 20))
+
+        # Generated password display
+        pw_frame = tk.Frame(pad, bg=SURFACE2,
+                            highlightbackground=BORDER, highlightthickness=1)
+        pw_frame.pack(fill="x", pady=(0, 6))
+        self.v_pw = tk.StringVar()
+        self.pw_lbl = tk.Entry(pw_frame, textvariable=self.v_pw,
+                               font=("Courier New", 13, "bold"),
+                               bg=SURFACE2, fg=GREEN,
+                               insertbackground=GREEN, relief="flat",
+                               justify="center", state="readonly")
+        self.pw_lbl.pack(fill="x", ipady=14, padx=10)
+
+        # Strength bar
+        self.str_lbl = tk.Label(pad, text="", font=FNT_SM,
+                                fg=MUTED, bg=SURFACE)
+        self.str_lbl.pack(anchor="w")
+        bar_bg = tk.Frame(pad, bg=SURFACE2, height=6)
+        bar_bg.pack(fill="x", pady=(2, 16))
+        bar_bg.pack_propagate(False)
+        self.str_bar = tk.Frame(bar_bg, bg=ACCENT, height=6)
+        self.str_bar.place(x=0, y=0, relheight=1, relwidth=0)
+
+        tk.Frame(pad, bg=BORDER, height=1).pack(fill="x", pady=(0, 14))
+
+        # Length slider
+        tk.Label(pad, text="LENGTH", font=FNT_SM,
+                 fg=MUTED, bg=SURFACE).pack(anchor="w")
+        len_row = tk.Frame(pad, bg=SURFACE)
+        len_row.pack(fill="x", pady=(4, 14))
+        self.v_len = tk.IntVar(value=16)
+        self.len_lbl = tk.Label(len_row, text="16",
+                                font=("Courier New", 12, "bold"),
+                                fg=ACCENT, bg=SURFACE, width=3)
+        self.len_lbl.pack(side="right")
+        slider = tk.Scale(len_row, from_=8, to=48,
+                          orient="horizontal", variable=self.v_len,
+                          bg=SURFACE, fg=TEXT, troughcolor=SURFACE2,
+                          activebackground=ACCENT, highlightthickness=0,
+                          showvalue=False, relief="flat",
+                          command=self._on_len)
+        slider.pack(side="left", fill="x", expand=True)
+
+        tk.Frame(pad, bg=BORDER, height=1).pack(fill="x", pady=(0, 14))
+
+        # Character options
+        tk.Label(pad, text="INCLUDE", font=FNT_SM,
+                 fg=MUTED, bg=SURFACE).pack(anchor="w", pady=(0, 8))
+
+        self.v_upper   = tk.BooleanVar(value=True)
+        self.v_lower   = tk.BooleanVar(value=True)
+        self.v_digits  = tk.BooleanVar(value=True)
+        self.v_symbols = tk.BooleanVar(value=True)
+
+        opts = [
+            ("A-Z  Uppercase",  self.v_upper),
+            ("a-z  Lowercase",  self.v_lower),
+            ("0-9  Numbers",    self.v_digits),
+            ("!@#  Symbols",    self.v_symbols),
+        ]
+        opt_grid = tk.Frame(pad, bg=SURFACE)
+        opt_grid.pack(fill="x", pady=(0, 16))
+        for i, (label, var) in enumerate(opts):
+            r, c = divmod(i, 2)
+            cb = tk.Checkbutton(opt_grid, text=label, variable=var,
+                                font=FNT_SM, bg=SURFACE, fg=TEXT,
+                                selectcolor=SURFACE2, activebackground=SURFACE,
+                                activeforeground=TEXT, relief="flat",
+                                cursor="hand2",
+                                command=self._generate)
+            cb.grid(row=r, column=c, sticky="w", padx=(0, 20), pady=3)
+
+        tk.Frame(pad, bg=BORDER, height=1).pack(fill="x", pady=(0, 14))
+
+        # Buttons
+        btn_row = tk.Frame(pad, bg=SURFACE)
+        btn_row.pack(fill="x")
+        mk_btn(btn_row, "🔄 Regenerate", self._generate,
+               bg=SURFACE2, fg=TEXT, w=16).pack(side="left")
+        mk_btn(btn_row, "📋 Copy", self._copy,
+               bg=SURFACE2, fg=TEXT, w=10).pack(side="left", padx=(8, 0))
+        if self.on_use:
+            mk_btn(btn_row, "Use Password", self._use,
+                   w=14).pack(side="right")
+        else:
+            mk_btn(btn_row, "Close", self.destroy,
+                   bg=SURFACE2, fg=MUTED, w=10).pack(side="right")
+
+    def _on_len(self, val):
+        self.len_lbl.config(text=str(val))
+        self._generate()
+
+    def _generate(self):
+        pw = generate_password(
+            length=self.v_len.get(),
+            upper=self.v_upper.get(),
+            lower=self.v_lower.get(),
+            digits=self.v_digits.get(),
+            symbols=self.v_symbols.get()
+        )
+        self.v_pw.set(pw)
+        self._update_strength(pw)
+
+    def _update_strength(self, pw):
+        label, color, ratio = password_strength(pw)
+        self.str_lbl.config(text=f"Strength: {label}", fg=color)
+        self.str_bar.place(relwidth=ratio)
+        self.str_bar.config(bg=color)
+
+    def _copy(self):
+        pw = self.v_pw.get()
+        if CLIPBOARD_OK:
+            pyperclip.copy(pw)
+        else:
+            self.clipboard_clear()
+            self.clipboard_append(pw)
+        self.str_lbl.config(text="✅  Copied to clipboard!", fg=GREEN)
+        self.after(1500, lambda: self._update_strength(self.v_pw.get()))
+
+    def _use(self):
+        if self.on_use:
+            self.on_use(self.v_pw.get())
+        self.destroy()
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Add / Edit Dialog
 # ══════════════════════════════════════════════════════════════════════════════
@@ -230,7 +417,7 @@ class EntryDialog(tk.Toplevel):
         self.title("Edit Entry" if entry else "New Entry")
         self.resizable(False, False)
         self.grab_set()
-        w, h = 460, 510
+        w, h = 460, 540
         sw, sh = self.winfo_screenwidth(), self.winfo_screenheight()
         self.geometry(f"{w}x{h}+{(sw-w)//2}+{(sh-h)//2}")
         self._build()
@@ -262,13 +449,30 @@ class EntryDialog(tk.Toplevel):
 
         self._lbl(pad, "PASSWORD")
         pw_row = tk.Frame(pad, bg=SURFACE)
-        pw_row.pack(fill="x", pady=(4,14))
-        self.pw_entry = mk_entry(pw_row, self.v_pass, show="●", mono=True, w=32)
+        pw_row.pack(fill="x", pady=(4, 4))
+        self.pw_entry = mk_entry(pw_row, self.v_pass, show="●", mono=True, w=26)
         self.pw_entry.pack(side="left", fill="x", expand=True, ipady=9)
+        self.pw_entry.bind("<KeyRelease>", lambda e: self._update_pw_strength())
         self.show_pw = False
         tk.Button(pw_row, text="👁", font=FNT_SM, bg=SURFACE2, fg=MUTED,
                   relief="flat", cursor="hand2", bd=0,
-                  command=self._toggle_pw).pack(side="left", padx=(8,0), ipady=9, ipadx=6)
+                  command=self._toggle_pw).pack(side="left", padx=(6,0), ipady=9, ipadx=6)
+        tk.Button(pw_row, text="⚙️ Generate", font=FNT_SM, bg=ACCENT, fg="white",
+                  relief="flat", cursor="hand2", bd=0, padx=8,
+                  command=self._open_generator).pack(side="left", padx=(6,0), ipady=9)
+
+        # Strength bar under password
+        str_row = tk.Frame(pad, bg=SURFACE)
+        str_row.pack(fill="x", pady=(2, 10))
+        self.str_lbl = tk.Label(str_row, text="", font=FNT_SM,
+                                fg=MUTED, bg=SURFACE)
+        self.str_lbl.pack(side="left")
+        bar_bg = tk.Frame(str_row, bg=SURFACE2, height=5, width=160)
+        bar_bg.pack(side="right")
+        bar_bg.pack_propagate(False)
+        self.str_bar = tk.Frame(bar_bg, bg=ACCENT, height=5)
+        self.str_bar.place(x=0, y=0, relheight=1, relwidth=0)
+        self._update_pw_strength()
 
         self._lbl(pad, "URL (optional)")
         mk_entry(pad, self.v_url, w=38).pack(fill="x", ipady=9, pady=(4,14))
@@ -294,6 +498,23 @@ class EntryDialog(tk.Toplevel):
     def _toggle_pw(self):
         self.show_pw = not self.show_pw
         self.pw_entry.config(show="" if self.show_pw else "●")
+
+    def _open_generator(self):
+        def use_password(pw):
+            self.v_pass.set(pw)
+            self._update_pw_strength()
+        GeneratorDialog(self, on_use=use_password)
+
+    def _update_pw_strength(self):
+        pw = self.v_pass.get()
+        if not pw:
+            self.str_lbl.config(text="")
+            self.str_bar.place(relwidth=0)
+            return
+        label, color, ratio = password_strength(pw)
+        self.str_lbl.config(text=f"Strength: {label}", fg=color)
+        self.str_bar.place(relwidth=ratio)
+        self.str_bar.config(bg=color)
 
     def _save(self):
         n = self.v_name.get().strip()
@@ -352,11 +573,12 @@ class VaultApp(tk.Frame):
         right = tk.Frame(hdr, bg=SURFACE)
         right.pack(side="right", padx=20)
         self.count_lbl = tk.Label(right, text="", font=FNT_SM, fg=MUTED, bg=SURFACE)
-        self.count_lbl.pack(side="left", padx=(0,14))
-        mk_btn(right, "+ Add Entry", self._add_entry, w=13).pack(side="left", padx=(0,8))
-        mk_btn(right, "🔑 Password", self._change_password, bg=SURFACE2, fg=MUTED, w=12).pack(side="left", padx=(0,8))
-        mk_btn(right, "ℹ About", self._show_about, bg=SURFACE2, fg=MUTED, w=9).pack(side="left", padx=(0,8))
-        mk_btn(right, "🔒 Lock", self.on_lock, bg=SURFACE2, fg=MUTED, w=10).pack(side="left")
+        self.count_lbl.pack(side="left", padx=(0,10))
+        mk_btn(right, "+ Add", self._add_entry, w=7).pack(side="left", padx=(0,6))
+        mk_btn(right, "⚙️ Gen", self._open_generator, bg=SURFACE2, fg=MUTED, w=7).pack(side="left", padx=(0,6))
+        mk_btn(right, "🔑 Passwd", self._change_password, bg=SURFACE2, fg=MUTED, w=9).pack(side="left", padx=(0,6))
+        mk_btn(right, "ℹ About", self._show_about, bg=SURFACE2, fg=MUTED, w=8).pack(side="left", padx=(0,6))
+        mk_btn(right, "🔒 Lock", self.on_lock, bg=SURFACE2, fg=MUTED, w=8).pack(side="left")
 
         # Search
         sf = tk.Frame(self, bg=BG, padx=20, pady=12)
@@ -512,6 +734,9 @@ class VaultApp(tk.Frame):
             except: pass
         self.after(500, lambda: [w.config(bg=orig)
                                  for w in widgets if w.winfo_exists()])
+
+    def _open_generator(self):
+        GeneratorDialog(self.winfo_toplevel())
 
     def _change_password(self):
         win = tk.Toplevel(self.winfo_toplevel())
@@ -695,7 +920,7 @@ class App(tk.Tk):
         w, h = 920, 660
         sw, sh = self.winfo_screenwidth(), self.winfo_screenheight()
         self.geometry(f"{w}x{h}+{(sw-w)//2}+{(sh-h)//2}")
-        self.minsize(720, 520)
+        self.minsize(820, 520)
         self._show_lock()
 
     def _clear(self):
