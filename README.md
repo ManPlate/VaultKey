@@ -1,84 +1,77 @@
 # 🔐 VaultKey — Offline Password Manager
 
-A standalone desktop password manager. No browser needed. No internet. No accounts.
-All data is encrypted with AES-256-GCM and stored only on your machine.
+> A simple, secure, offline desktop password manager for Windows.
+> No internet. No accounts. No subscriptions. Your passwords stay on your machine.
 
 ---
 
-## 📋 Requirements
+## ✨ Features
 
-- Python 3.8 or higher (free download: https://www.python.org/downloads/)
-- Windows, macOS, or Linux
-
----
-
-## 🚀 Quick Start (3 steps)
-
-**Step 1 — Install Python** (if you don't have it)
-Download from https://www.python.org/downloads/ and install.
-➡ On Windows: check "Add Python to PATH" during install.
-
-**Step 2 — Install dependencies**
-Open Terminal (Mac/Linux) or Command Prompt (Windows), navigate to this folder, and run:
-
-```
-pip install -r requirements.txt
-```
-
-**Step 3 — Launch the app**
-```
-python vaultkey.py
-```
-
-Or on Windows, double-click `run_windows.bat`
-Or on Mac/Linux, double-click `run_mac_linux.sh` (may need to chmod +x it first)
+- 🔐 **AES-256-GCM encryption** — military-grade encryption on all stored passwords
+- 🔑 **Password generator** — generate strong passwords with custom length and character options
+- 📊 **Password strength meter** — see instantly how strong a password is
+- 🗂️ **Categories** — organise entries as Work, Email, Social, Finance, Dev or Other
+- 🔍 **Search** — find any entry instantly
+- 🔒 **Auto-lock** — vault locks automatically after 5 minutes of inactivity
+- 📋 **Clipboard auto-clear** — copied passwords are wiped from clipboard after 30 seconds
+- 🛡️ **Login lockout** — 5 failed attempts triggers a 30-second cooldown
+- 🔑 **Change master password** — re-encrypts the entire vault with the new password
+- 🔔 **Auto update checker** — notifies you when a new version is available
+- 💾 **Fully offline** — no data ever leaves your computer
 
 ---
 
-## 🔒 First Launch
+## 🚀 Download
 
-On first run, you'll be asked to create a **Master Password**.
-This password encrypts everything — **there is no recovery option if you forget it.**
+👉 **[Download the latest VaultKey.exe from Releases](https://github.com/ManPlate/VaultKey/releases)**
 
----
+No installation needed. Just download and double-click.
 
-## 📁 Where is my data stored?
-
-All encrypted vault data is stored in:
-- **Windows:** `C:\Users\<YourName>\.vaultkey\`
-- **Mac/Linux:** `~/.vaultkey/`
-
-The files are encrypted — they cannot be read without your master password.
-
----
-
-## 📦 Package as a Standalone App (Optional)
-
-To create a double-clickable `.exe` (Windows) or `.app` (Mac):
-
-```
-pip install pyinstaller
-pyinstaller --onefile --windowed --name VaultKey vaultkey.py
-```
-
-The standalone file will appear in the `dist/` folder.
-
----
-
-## 🔐 Security
-
-- **Encryption:** AES-256-GCM (authenticated encryption)
-- **Key Derivation:** PBKDF2-HMAC-SHA256 with 390,000 iterations
-- **Salt:** 16-byte random salt per vault
-- **No telemetry. No network calls. Fully offline.**
+> ⚠️ If Windows shows "Windows protected your PC", click **More info → Run anyway**.
+> This is normal for apps distributed outside the Microsoft Store.
 
 ---
 
 ## 📦 Version History
 
-| Version | Notes |
+<!-- VERSION_TABLE_START -->
+| Version | What's New |
 |---|---|
+| **v1.6.0** ← current | Added automatic update checker |
+| **v1.5.0** | Security hardening: lockout, auto-lock, clipboard clear |
+| **v1.4.0** | Added password generator with strength meter |
 | **v1.3.0** | Added ability to change master password |
 | **v1.2.0** | Fixed card layout and resize behaviour |
 | **v1.1.0** | Fixed compatibility with Python 3.14 on Windows |
 | **v1.0.0** | Initial release |
+<!-- VERSION_TABLE_END -->
+
+---
+
+## 🔒 Security
+
+- All passwords encrypted with **AES-256-GCM** (authenticated encryption)
+- Master password never stored — used only to derive the encryption key
+- Key derivation uses **PBKDF2-HMAC-SHA256** with 390,000 iterations
+- Random 16-byte salt generated per vault
+- Encrypted vault stored locally at `C:\Users\YourName\.vaultkey\`
+
+---
+
+## 🖥️ How to Update
+
+1. Download the new `VaultKey.exe` from [Releases](https://github.com/ManPlate/VaultKey/releases)
+2. Replace the old `VaultKey.exe` with the new one
+3. Your passwords are safe — they are stored separately from the app
+
+See [HOW_TO_UPDATE.md](HOW_TO_UPDATE.md) for full instructions.
+
+---
+
+## 🛠️ For Developers
+
+Want to build from source? See [README_DEV.md](README_DEV.md) for setup instructions.
+
+---
+
+*Built with Python + tkinter. Encryption powered by the [cryptography](https://cryptography.io) library.*
