@@ -58,5 +58,5 @@ try:
 
 except FileNotFoundError as e:
     print(f'[ERROR] File not found: {e}')
-    print('Make sure you run build.bat from the vaultkey folder.')
+    print('Make sure you run build.bat from the marai folder.')
     sys.exit(1)
