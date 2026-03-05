@@ -492,7 +492,7 @@ class GeneratorDialog(tk.Toplevel):
         self.configure(bg=SURFACE)
         self.resizable(False, False)
         self.grab_set()
-        w, h = 440, 480
+        w, h = 500, 480
         sw, sh = self.winfo_screenwidth(), self.winfo_screenheight()
         self.geometry(f"{w}x{h}+{(sw-w)//2}+{(sh-h)//2}")
         self._build()
@@ -582,12 +582,12 @@ class GeneratorDialog(tk.Toplevel):
         btn_row = tk.Frame(pad, bg=SURFACE)
         btn_row.pack(fill="x")
         mk_btn(btn_row, "🔄 Regenerate", self._generate,
-               bg=SURFACE2, fg=TEXT, w=16).pack(side="left")
+               bg=SURFACE2, fg=TEXT, w=14).pack(side="left")
         mk_btn(btn_row, "📋 Copy", self._copy,
                bg=SURFACE2, fg=TEXT, w=10).pack(side="left", padx=(8, 0))
         if self.on_use:
             mk_btn(btn_row, "Use Password", self._use,
-                   w=14).pack(side="right")
+                   w=16).pack(side="right")
         else:
             mk_btn(btn_row, "Close", self.destroy,
                    bg=SURFACE2, fg=MUTED, w=10).pack(side="right")
