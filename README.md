@@ -1,39 +1,126 @@
-# 🔐 Marai — Offline Password Manager
+<div align="center">
 
-> *Marai* (மறை) — an ancient Tamil word meaning "that which is hidden". In Sangam literature, Marai referred to sacred knowledge concealed from the world, accessible only to those who hold the key.
->
-> Your passwords deserve the same protection.
+# 🔐 Marai
 
----
+### Offline Password Manager for Windows
 
-## ✨ Features
-
-- 🔐 **AES-256-GCM encryption** — military-grade encryption on all stored passwords
-- 🔑 **Password generator** — generate strong passwords with custom length and character options
-- 📊 **Password strength meter** — see instantly how strong a password is
-- 🗂️ **Categories** — organise entries as Work, Email, Social, Finance, Dev or Other
-- 🔍 **Search** — find any entry instantly
-- 🔒 **Auto-lock** — vault locks automatically after 5 minutes of inactivity
-- 📋 **Clipboard protection** — copied passwords never appear in Windows clipboard history (Win+V)
-- 🛡️ **Login lockout** — 5 failed attempts triggers a 30-second cooldown
-- 🔑 **Change master password** — re-encrypts the entire vault with the new password
-- 🔔 **Auto update checker** — notifies you when a new version is available
-- 💾 **Fully offline** — no data ever leaves your computer
+*Marai* (மறை) — an ancient Tamil word from Sangam literature meaning **"that which is hidden"**.
+Sacred knowledge concealed from the world, accessible only to those who hold the key.
 
 ---
 
-## 🚀 Download
+[![Version](https://img.shields.io/badge/version-2.1.0-7c5cfc?style=flat-square)](https://github.com/ManPlate/Marai/releases)
+[![Platform](https://img.shields.io/badge/platform-Windows-0078d4?style=flat-square&logo=windows)](https://github.com/ManPlate/Marai/releases)
+[![License](https://img.shields.io/badge/license-MIT-4ecca3?style=flat-square)](LICENSE)
+[![Encryption](https://img.shields.io/badge/encryption-AES--256--GCM-fc5c7d?style=flat-square)](#security)
+[![KDF](https://img.shields.io/badge/KDF-Argon2id-fc5c7d?style=flat-square)](#security)
 
-👉 **[Download the latest Marai.exe from Releases](https://github.com/ManPlate/Marai/releases)**
+**[⬇️ Download Latest Release](https://github.com/ManPlate/Marai/releases)** &nbsp;·&nbsp;
+**[📋 View Changelog](#version-history)** &nbsp;·&nbsp;
+**[🛠️ Build from Source](README_DEV.md)**
 
-No installation needed. Just download and double-click.
-
-> ⚠️ If Windows shows "Windows protected your PC", click **More info → Run anyway**.
-> This is normal for apps distributed outside the Microsoft Store.
+</div>
 
 ---
 
-## 📦 Version History
+## What is Marai?
+
+Marai is a **fully offline**, open source password manager for Windows. Your passwords are encrypted locally on your machine using military-grade encryption — no cloud, no accounts, no subscriptions, no internet connection required. Ever.
+
+> Your data never leaves your computer. Not even once.
+
+---
+
+## Features
+
+### 🔐 Security First
+| Feature | Detail |
+|---|---|
+| **AES-256-GCM Encryption** | Authenticated encryption — detects tampering as well as encrypting |
+| **Argon2id Key Derivation** | Memory-hard KDF — resists GPU and specialised hardware brute force attacks |
+| **Zero Knowledge** | Master password is never stored — used only to derive the encryption key |
+| **Clipboard Protection** | Copied passwords never appear in Windows clipboard history (Win+V) |
+| **Auto-Lock** | Vault locks automatically after 5 minutes of inactivity |
+| **Login Lockout** | 5 failed attempts triggers a 30-second cooldown |
+| **Fully Offline** | No network requests except optional update checks |
+
+### 🗂️ Password Management
+- Organise entries by category — **Work, Email, Social, Finance, Dev, Other**
+- Instant search across all entries
+- Password strength meter — see how strong any password is at a glance
+- Built-in password generator with customisable length and character sets
+- Show/hide individual passwords
+- One-click copy to clipboard
+- Edit and delete entries
+
+### 🔑 Vault Management
+- Change master password — re-encrypts the entire vault with the new key
+- Automatic update checker — notifies you when a new version is available
+- Vault stored locally at `C:\Users\YourName\.marai\`
+
+---
+
+## Download
+
+<div align="center">
+
+### **[⬇️ Download Marai.exe](https://github.com/ManPlate/Marai/releases/latest)**
+
+No installation required. Download and double-click to run.
+
+</div>
+
+> **⚠️ Windows SmartScreen Warning**
+> Windows may show "Windows protected your PC" when you first run Marai.
+> This happens because the app is not yet code-signed.
+> Click **More info → Run anyway** to proceed. This is safe.
+
+---
+
+## Security
+
+Marai is built on a foundation of well-established, auditable cryptographic primitives. No custom cryptography — only battle-tested standard libraries.
+
+### Encryption
+```
+Algorithm:    AES-256-GCM  (authenticated encryption)
+IV:           96-bit random, generated fresh per encryption
+Library:      Python cryptography (built on OpenSSL)
+```
+
+### Key Derivation
+```
+Algorithm:    Argon2id  (OWASP recommended)
+Memory:       64 MB
+Iterations:   3
+Parallelism:  4 threads
+Hash length:  256-bit
+Salt:         128-bit random, unique per vault
+```
+
+### Vault Storage
+```
+Location:     ~/.marai/vault.enc
+Format:       AES-256-GCM encrypted JSON
+Meta:         ~/.marai/meta.json  (salt + verification token — no plaintext)
+```
+
+### Threat Model
+| Threat | Protection |
+|---|---|
+| Someone steals your vault file | AES-256-GCM + Argon2id makes brute force impractical |
+| Shoulder surfing | Auto-lock after 5 minutes of inactivity |
+| Clipboard snooping | Passwords excluded from Windows clipboard history |
+| Brute force login | 5-attempt lockout with 30-second cooldown |
+| Network interception | Not applicable — fully offline |
+
+### Honest Limitations
+- Decrypted passwords exist in RAM while the vault is unlocked. This is a fundamental Python limitation shared by all Python-based password managers. Mitigated by auto-lock.
+- The `.exe` is not yet code-signed. Windows SmartScreen will warn on first run.
+
+---
+
+## Version History
 
 <!-- VERSION_TABLE_START -->
 | Version | What's New |
@@ -52,32 +139,32 @@ No installation needed. Just download and double-click.
 
 ---
 
-## 🔒 Security
-
-- All passwords encrypted with **AES-256-GCM** (authenticated encryption)
-- Master password never stored — used only to derive the encryption key
-- Key derivation uses **PBKDF2-HMAC-SHA256** with 390,000 iterations
-- Random 16-byte salt generated per vault
-- Copied passwords never saved to Windows clipboard history
-- Auto-locks after 5 minutes of inactivity
-- Encrypted vault stored locally at `C:\Users\YourName\.marai\`
-
----
-
-## 🖥️ How to Update
+## How to Update
 
 1. Download the new `Marai.exe` from [Releases](https://github.com/ManPlate/Marai/releases)
-2. Replace the old `Marai.exe` with the new one
-3. Your passwords are safe — they are stored separately from the app
+2. Replace the old `Marai.exe` with the new one — that is all
+3. Your passwords are completely safe — stored separately in `~/.marai/`
 
-See [HOW_TO_UPDATE.md](HOW_TO_UPDATE.md) for full instructions.
+> Updating from an older version? Security upgrades (like the Argon2id migration in v2.1.0) happen automatically and silently on your first login after updating. No action needed.
 
----
-
-## 🛠️ For Developers
-
-Want to build from source? See [README_DEV.md](README_DEV.md) for setup instructions.
+See [HOW_TO_UPDATE.md](HOW_TO_UPDATE.md) for full step-by-step instructions.
 
 ---
 
-*Built with Python + tkinter. Encryption powered by the [cryptography](https://cryptography.io) library.*
+## For Developers
+
+Want to audit the code, build from source, or contribute?
+
+See **[README_DEV.md](README_DEV.md)** for full setup and build instructions.
+
+The entire cryptographic implementation is contained in four functions at the top of `marai.py` — fully readable and auditable in under 5 minutes.
+
+---
+
+<div align="center">
+
+Built with Python + tkinter &nbsp;·&nbsp; Encryption by [cryptography](https://cryptography.io) (OpenSSL) &nbsp;·&nbsp; KDF by [argon2-cffi](https://argon2-cffi.readthedocs.io)
+
+*Marai — hidden by design.*
+
+</div>
