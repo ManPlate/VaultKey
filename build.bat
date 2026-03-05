@@ -41,8 +41,8 @@ echo [OK] Cleaned.
 echo [3/4] Building Marai.exe...
 echo.
 
-if exist vaultkey.ico (
-    py -m PyInstaller --onefile --windowed --name Marai --icon=vaultkey.ico marai.py
+if exist marai.ico (
+    py -m PyInstaller --onefile --windowed --name Marai --icon=marai.ico --add-data "marai.ico;." marai.py
 ) else (
     py -m PyInstaller --onefile --windowed --name Marai marai.py
 )
@@ -65,6 +65,7 @@ echo   Next steps:
 echo   1. Test dist\Marai.exe
 echo   2. Upload marai.py to GitHub
 echo   3. Upload version.json to GitHub
-echo   4. Share dist\Marai.exe with your users
+echo   4. Upload README.md to GitHub
+echo   5. Share dist\Marai.exe with your users
 echo.
 pause

@@ -229,32 +229,54 @@ class LockScreen(tk.Frame):
         center = tk.Frame(self, bg=BG)
         center.place(relx=0.5, rely=0.5, anchor="center")
 
-        # ── Canvas lock icon ──────────────────────────────────────────────
-        icon_size = 90
+        # ── Concentric logo icon (matches marai_logo.svg) ────────────────
+        icon_size = 120
         c = tk.Canvas(center, width=icon_size, height=icon_size,
                       bg=BG, highlightthickness=0)
-        c.pack(pady=(0, 6))
-        cx = icon_size // 2
-        # Shackle (arc)
-        sw = 10
-        c.create_arc(cx-22, 8, cx+22, 52,
-                     start=0, extent=180,
-                     style="arc", outline=ACCENT, width=sw)
-        # Body
-        c.create_rounded_rect = lambda x1,y1,x2,y2,r,**kw: c.create_polygon(
-            x1+r,y1, x2-r,y1, x2,y1+r, x2,y2-r, x2-r,y2, x1+r,y2, x1,y2-r, x1,y1+r,
-            smooth=True, **kw)
-        body_x1, body_y1, body_x2, body_y2 = cx-28, 46, cx+28, 84
-        c.create_rectangle(body_x1, body_y1, body_x2, body_y2,
-                           fill=ACCENT, outline="", width=0)
-        c.create_rectangle(body_x1, body_y1, body_x2, body_y1+10,
-                           fill=_lighten(ACCENT), outline="", width=0)
-        # Keyhole circle
-        c.create_oval(cx-8, 58, cx+8, 74,
-                      fill=BG, outline="")
-        # Keyhole slot
-        c.create_rectangle(cx-4, 68, cx+4, 80,
-                           fill=BG, outline="")
+        c.pack(pady=(0, 10))
+        cx, cy = icon_size / 2, icon_size / 2
+
+        import math
+
+        def ring_points(cx, cy, rx, ry, n_sides, rotation_deg):
+            """Generate polygon points for an irregular ring."""
+            pts = []
+            for i in range(n_sides):
+                angle = math.radians(rotation_deg + i * 360 / n_sides)
+                x = cx + rx * math.cos(angle)
+                y = cy + ry * math.sin(angle)
+                pts.extend([x, y])
+            return pts
+
+        # Layer 6 — outermost, faintest
+        pts = ring_points(cx, cy, 52, 48, 7, 12)
+        c.create_polygon(pts, fill="", outline="#2a1f5e", width=1, smooth=False)
+
+        # Layer 5
+        pts = ring_points(cx, cy, 46, 42, 7, 22)
+        c.create_polygon(pts, fill="", outline="#3d2d8a", width=1, smooth=False)
+
+        # Layer 4
+        pts = ring_points(cx, cy, 39, 36, 7, 5)
+        c.create_polygon(pts, fill="", outline="#5438b0", width=2, smooth=False)
+
+        # Layer 3
+        pts = ring_points(cx, cy, 31, 29, 7, 18)
+        c.create_polygon(pts, fill="", outline=ACCENT, width=2, smooth=False)
+
+        # Layer 2 — brighter
+        pts = ring_points(cx, cy, 22, 21, 7, 8)
+        c.create_polygon(pts, fill="", outline="#9d7fff", width=2, smooth=False)
+
+        # Layer 1 — innermost ring with fill
+        pts = ring_points(cx, cy, 13, 13, 7, 20)
+        c.create_polygon(pts, fill="#1e1040", outline="#c4b0ff", width=1.5, smooth=False)
+
+        # Core glow
+        c.create_oval(cx-9, cy-9, cx+9, cy+9,
+                      fill="#c4b0ff", outline="", width=0)
+        c.create_oval(cx-5, cy-5, cx+5, cy+5,
+                      fill="#ffffff", outline="", width=0)
 
         # ── Name with letter spacing ──────────────────────────────────────
         tk.Label(center, text="M  A  R  A  I",
@@ -1176,7 +1198,24 @@ class VaultApp(tk.Frame):
         # ── Header (fixed, always visible) ───────────────────────────────
         hdr = tk.Frame(win, bg=SURFACE, padx=30, pady=20)
         hdr.pack(fill="x")
-        tk.Label(hdr, text="🔐", font=("Segoe UI",36), bg=SURFACE).pack()
+        # Small concentric icon for About dialog
+        import math
+        ac = tk.Canvas(hdr, width=64, height=64, bg=SURFACE, highlightthickness=0)
+        ac.pack()
+        ax, ay = 32.0, 32.0
+        def aring(cx, cy, rx, ry, n, rot):
+            pts = []
+            for i in range(n):
+                a = math.radians(rot + i * 360 / n)
+                pts.extend([cx + rx*math.cos(a), cy + ry*math.sin(a)])
+            return pts
+        ac.create_polygon(aring(ax,ay,28,26,7,12), fill="", outline="#2a1f5e", width=1)
+        ac.create_polygon(aring(ax,ay,23,21,7,22), fill="", outline="#3d2d8a", width=1)
+        ac.create_polygon(aring(ax,ay,18,17,7,5),  fill="", outline=ACCENT,    width=1.5)
+        ac.create_polygon(aring(ax,ay,12,12,7,18), fill="", outline="#9d7fff",  width=1.5)
+        ac.create_polygon(aring(ax,ay,7,7,7,20),   fill="#1e1040", outline="#c4b0ff", width=1)
+        ac.create_oval(ax-5,ay-5,ax+5,ay+5, fill="#c4b0ff", outline="")
+        ac.create_oval(ax-2.5,ay-2.5,ax+2.5,ay+2.5, fill="#ffffff", outline="")
         tk.Label(hdr, text="M  A  R  A  I", font=("Segoe UI",18,"bold"),
                  fg=ACCENT, bg=SURFACE).pack()
         tk.Label(hdr, text=f"Version {VERSION}", font=FNT_SM,
@@ -1269,7 +1308,21 @@ class App(tk.Tk):
         sw, sh = self.winfo_screenwidth(), self.winfo_screenheight()
         self.geometry(f"{w}x{h}+{(sw-w)//2}+{(sh-h)//2}")
         self.minsize(820, 520)
+        self._set_icon()
         self._show_lock()
+
+    def _set_icon(self):
+        """Set the window icon for title bar and taskbar."""
+        # When bundled with PyInstaller, resources are in sys._MEIPASS
+        # When running from source, look in the same folder as the script
+        import sys
+        base = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
+        ico = os.path.join(base, "marai.ico")
+        if os.path.exists(ico):
+            try:
+                self.iconbitmap(ico)
+            except Exception:
+                pass
 
     def _clear(self):
         for w in self.winfo_children():
