@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <defs>
+    <radialGradient id="bgGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#1a1a2e"/>
+      <stop offset="100%" stop-color="#0a0a12"/>
+    </radialGradient>
+    <radialGradient id="coreGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+      <stop offset="40%" stop-color="#c4b0ff" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#7c5cfc" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="ringGrad1" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#9d7fff"/>
+      <stop offset="100%" stop-color="#5a3db8"/>
+    </radialGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="12" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="coreFilter" x="-80%" y="-80%" width="360%" height="360%">
+      <feGaussianBlur stdDeviation="18" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <clipPath id="circle">
+      <circle cx="200" cy="200" r="185"/>
+    </clipPath>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="200" cy="200" r="195" fill="url(#bgGrad)"/>
+  <circle cx="200" cy="200" r="195" fill="none" stroke="#2a1f5e" stroke-width="1.5"/>
+
+  <!-- Outermost ring — faintest, most rotated -->
+  <g clip-path="url(#circle)">
+
+    <!-- Layer 6 — outermost -->
+    <polygon
+      points="200,42 340,110 358,268 248,368 110,340 52,192 120,72"
+      fill="none"
+      stroke="#3d2d8a"
+      stroke-width="1.2"
+      opacity="0.5"
+    />
+
+    <!-- Layer 5 -->
+    <polygon
+      points="200,62 320,122 336,258 238,346 118,320 68,188 128,88"
+      fill="none"
+      stroke="#4e38a8"
+      stroke-width="1.5"
+      opacity="0.6"
+    />
+
+    <!-- Layer 4 -->
+    <polygon
+      points="200,85 300,138 312,244 228,320 130,298 88,186 138,108"
+      fill="none"
+      stroke="#6245c4"
+      stroke-width="1.8"
+      opacity="0.7"
+    />
+
+    <!-- Layer 3 -->
+    <polygon
+      points="200,110 278,155 288,230 218,294 144,274 108,182 150,128"
+      fill="none"
+      stroke="#7c5cfc"
+      stroke-width="2.2"
+      opacity="0.8"
+      filter="url(#glow)"
+    />
+
+    <!-- Layer 2 — brighter -->
+    <polygon
+      points="200,138 256,172 262,216 208,264 158,248 128,178 162,148"
+      fill="none"
+      stroke="#9d7fff"
+      stroke-width="2.8"
+      opacity="0.9"
+      filter="url(#glow)"
+    />
+
+    <!-- Layer 1 — innermost ring -->
+    <polygon
+      points="200,162 234,182 238,210 200,238 164,222 152,190 174,164"
+      fill="#1e1040"
+      stroke="#c4b0ff"
+      stroke-width="2"
+      filter="url(#softGlow)"
+    />
+
+    <!-- Core glow -->
+    <circle cx="200" cy="200" r="38" fill="url(#coreGlow)" filter="url(#coreFilter)" opacity="0.9"/>
+
+    <!-- Core dot -->
+    <circle cx="200" cy="200" r="10" fill="#ffffff" opacity="0.95" filter="url(#glow)"/>
+    <circle cx="200" cy="200" r="5" fill="#ffffff"/>
+
+    <!-- Subtle radial lines from core — like depth rays -->
+    <g stroke="#7c5cfc" stroke-width="0.8" opacity="0.25">
+      <line x1="200" y1="200" x2="200" y2="42"/>
+      <line x1="200" y1="200" x2="340" y2="110"/>
+      <line x1="200" y1="200" x2="358" y2="268"/>
+      <line x1="200" y1="200" x2="248" y2="368"/>
+      <line x1="200" y1="200" x2="110" y2="340"/>
+      <line x1="200" y1="200" x2="52" y2="192"/>
+      <line x1="200" y1="200" x2="120" y2="72"/>
+    </g>
+
+  </g>
+
+  <!-- Outer border ring with subtle gradient -->
+  <circle cx="200" cy="200" r="185" fill="none" stroke="#7c5cfc" stroke-width="0.8" opacity="0.4"/>
+</svg>
